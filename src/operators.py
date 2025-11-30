@@ -254,8 +254,8 @@ class JacobianIclMeanEstimator(LinearRelationEstimator):
             approxes.append(approx)
             
             # Clear CUDA cache after each Jacobian computation to prevent OOM look into later..... 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+           # if torch.cuda.is_available():
+               # torch.cuda.empty_cache()
 
         weight = torch.stack([approx.weight for approx in approxes]).mean(dim=0)
         bias = torch.stack([approx.bias for approx in approxes]).mean(dim=0)
@@ -266,7 +266,7 @@ class JacobianIclMeanEstimator(LinearRelationEstimator):
             mt=self.mt,
             prompt_template=prompt_template,
             examples=samples,
-            prepend_string=self.prepend_string,
+            prepend_string=None,  # Don't prepend during inference
             subject="{}",
         )
 
