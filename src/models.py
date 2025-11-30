@@ -357,7 +357,7 @@ def load_model(
 
     torch_dtype = torch.float16 if fp16 else None
 
-    kwargs: dict = dict(torch_dtype=torch_dtype)
+    kwargs: dict = dict(dtype=torch_dtype)
     if is_gpt_j_variant:
         kwargs["low_cpu_mem_usage"] = True
         if fp16:

@@ -207,12 +207,13 @@ class JacobianIclEstimator(LinearRelationEstimator):
         ).estimate_for_subject(train.subject, prompt_template_icl)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class JacobianIclMeanEstimator(LinearRelationEstimator):
     h_layer: Layer
     z_layer: Layer | None = None
     beta: float | None = None
     rank: int | None = None  # If None, don't do low rank approximation.
+    prepend_string: str | None = None  # Raw string to prepend
 
     def __call__(self, relation: data.Relation) -> LinearRelationOperator:
         _check_nonempty(
@@ -230,6 +231,7 @@ class JacobianIclMeanEstimator(LinearRelationEstimator):
                 prompt_template=prompt_template,
                 subject=sample.subject,
                 examples=samples,
+                prepend_string=self.prepend_string,
             )
             logger.debug("estimating J for prompt:\n" + prompt)
 
@@ -250,6 +252,10 @@ class JacobianIclMeanEstimator(LinearRelationEstimator):
                 inputs=inputs,
             )
             approxes.append(approx)
+            
+            # Clear CUDA cache after each Jacobian computation to prevent OOM look into later..... 
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         weight = torch.stack([approx.weight for approx in approxes]).mean(dim=0)
         bias = torch.stack([approx.bias for approx in approxes]).mean(dim=0)
@@ -260,6 +266,7 @@ class JacobianIclMeanEstimator(LinearRelationEstimator):
             mt=self.mt,
             prompt_template=prompt_template,
             examples=samples,
+            prepend_string=self.prepend_string,
             subject="{}",
         )
 

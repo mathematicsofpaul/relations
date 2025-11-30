@@ -410,21 +410,33 @@ def make_prompt(
     prompt_template: str,
     subject: str,
     examples: Sequence[data.RelationSample] | None = None,
+    prepend_string: str | None = None,
     mt: models.ModelAndTokenizer | None = None,
 ) -> str:
-    """Build the prompt given the template and (optionally) ICL examples."""
+    """Build the prompt given the template and (optionally) ICL examples.
+    
+    Args:
+        prepend_string: Raw string to prepend before all examples (highest priority).
+        examples: Examples subject to leave-one-out filtering.
+    """
     prompt = prompt_template.format(subject)
 
+    example_prompts = []
+    
+    # Add prepended string first (if provided) attached string to it
+    if prepend_string is not None:
+        example_prompts.append(prepend_string)
+    
+    # Add regular examples with leave-one-out
     if examples is not None:
         others = [x for x in examples if x.subject != subject]
-        # TODO(evan): Should consider whether prompt wants the space at the end or not.
-        prompt = (
-            "\n".join(
-                prompt_template.format(x.subject) + f" {x.object}" for x in others
-            )
-            + "\n"
-            + prompt
+        example_prompts.extend(
+            prompt_template.format(x.subject) + f" {x.object}" for x in others
         )
+    
+    if example_prompts:
+        # TODO(evan): Should consider whether prompt wants the space at the end or not.
+        prompt = "\n".join(example_prompts) + "\n" + prompt
 
     prompt = models.maybe_prefix_eos(mt, prompt)
 
