@@ -17,6 +17,7 @@ Model = (
     | transformers.GPTJForCausalLM
     | transformers.GPTNeoXForCausalLM
     | transformers.LlamaForCausalLM
+    | transformers.MistralForCausalLM
 )
 Tokenizer = transformers.PreTrainedTokenizerFast
 TokenizerOffsetMapping = Sequence[tuple[int, int]]

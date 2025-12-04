@@ -29,6 +29,9 @@ LLAMA_13B_NAME = "llama-13b"
 LLAMA_30B_NAME = "llama-30b"
 LLAMA_NAME_SHORT = "llama"
 
+MISTRAL_NEMO_12B_NAME = "mistralai/Mistral-Nemo-Instruct-2407"
+MISTRAL_NAME_SHORT = "nemo"
+
 DOWNLOADABLE_MODELS = frozenset({GPT_J_NAME, GPT_NEO_X_NAME, "gpt2-xl"})
 
 
@@ -53,6 +56,8 @@ class ModelAndTokenizer:
             )
         elif isinstance(self.model, transformers.LlamaForCausalLM):
             return torch.nn.Sequential(self.model.model.norm, self.model.lm_head)
+        elif isinstance(self.model, transformers.MistralForCausalLM):
+            return torch.nn.Sequential(self.model.model.norm, self.model.lm_head)
         else:
             raise ValueError(f"unknown model type: {type(self.model).__name__}")
 
@@ -64,6 +69,8 @@ class ModelAndTokenizer:
         elif isinstance(self.model, transformers.LlamaForCausalLM):
             # TODO(evan): Does not factor in different sizes.
             return LLAMA_NAME_SHORT
+        elif isinstance(self.model, transformers.MistralForCausalLM):
+            return MISTRAL_NAME_SHORT
         elif isinstance(self.model, transformers.GPTJForCausalLM):
             return GPT_J_NAME_SHORT
         elif isinstance(self.model, transformers.GPT2LMHeadModel):
@@ -101,6 +108,8 @@ def determine_embedding_layer_path(model: ModelAndTokenizer | Model) -> str:
         return "transformer.wte"
     elif isinstance(model, transformers.LlamaForCausalLM):
         return "model.embed_tokens"
+    elif isinstance(model, transformers.MistralForCausalLM):
+        return "model.embed_tokens"
     else:
         raise ValueError(f"unknown model type: {type(model).__name__}")
 
@@ -110,6 +119,8 @@ def determine_final_layer_norm_path(model: ModelAndTokenizer | Model) -> str:
     if is_gpt_variant(model):
         return "transformer.ln_f"
     elif isinstance(model, transformers.LlamaForCausalLM):
+        return "model.norm"
+    elif isinstance(model, transformers.MistralForCausalLM):
         return "model.norm"
     else:
         raise ValueError(f"unknown model type: {type(model).__name__}")
@@ -121,7 +132,10 @@ def determine_layers(model: ModelAndTokenizer | Model) -> tuple[int, ...]:
     assert isinstance(model, Model)
 
     if isinstance(
-        model, transformers.GPTNeoXForCausalLM | transformers.LlamaForCausalLM
+        model,
+        transformers.GPTNeoXForCausalLM
+        | transformers.LlamaForCausalLM
+        | transformers.MistralForCausalLM,
     ):
         n_layer = model.config.num_hidden_layers
     else:
@@ -194,6 +208,8 @@ def determine_layer_paths(
         if isinstance(model, transformers.GPTNeoXForCausalLM):
             layer_path = f"gpt_neox.layers.{layer_index}"
         elif isinstance(model, transformers.LlamaForCausalLM):
+            layer_path = f"model.layers.{layer_index}"
+        elif isinstance(model, transformers.MistralForCausalLM):
             layer_path = f"model.layers.{layer_index}"
         else:
             layer_path = f"transformer.h.{layer_index}"
@@ -342,6 +358,8 @@ def load_model(
         name = GPT_NEO_X_NAME
     elif name == LLAMA_NAME_SHORT:
         name = LLAMA_13B_NAME
+    elif name == MISTRAL_NAME_SHORT:
+        name = MISTRAL_NEMO_12B_NAME
 
     # I usually save randomly initialized variants under the short name of the
     # corresponding real model (e.g. gptj_random, neox_random), so check here
@@ -351,9 +369,12 @@ def load_model(
     is_llama_variant = (
         name in {LLAMA_13B_NAME, LLAMA_30B_NAME} or LLAMA_NAME_SHORT in name
     )
+    is_mistral_variant = (
+        name == MISTRAL_NEMO_12B_NAME or MISTRAL_NAME_SHORT in name
+    )
 
     if fp16 is None:
-        fp16 = is_gpt_j_variant or is_neo_x_variant or is_llama_variant
+        fp16 = is_gpt_j_variant or is_neo_x_variant or is_llama_variant or is_mistral_variant
 
     torch_dtype = torch.float16 if fp16 else None
 
@@ -384,6 +405,9 @@ def load_model(
         tokenizer = transformers.LlamaTokenizerFast.from_pretrained(name)
         tokenizer.pad_token = tokenizer.eos_token = "</s>"
         tokenizer.pad_token_id = tokenizer.eos_token_id = 2
+    elif is_mistral_variant:
+        tokenizer = transformers.AutoTokenizer.from_pretrained(name)
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(name)
         tokenizer.pad_token = tokenizer.eos_token
