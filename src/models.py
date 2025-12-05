@@ -29,8 +29,10 @@ LLAMA_13B_NAME = "llama-13b"
 LLAMA_30B_NAME = "llama-30b"
 LLAMA_NAME_SHORT = "llama"
 
+MISTRAL_7B_NAME = "mistralai/Mistral-7B-Instruct-v0.3"
 MISTRAL_NEMO_12B_NAME = "mistralai/Mistral-Nemo-Instruct-2407"
-MISTRAL_NAME_SHORT = "nemo"
+MISTRAL_7B_NAME_SHORT = "mistral"
+MISTRAL_NEMO_NAME_SHORT = "nemo"
 
 DOWNLOADABLE_MODELS = frozenset({GPT_J_NAME, GPT_NEO_X_NAME, "gpt2-xl"})
 
@@ -358,7 +360,9 @@ def load_model(
         name = GPT_NEO_X_NAME
     elif name == LLAMA_NAME_SHORT:
         name = LLAMA_13B_NAME
-    elif name == MISTRAL_NAME_SHORT:
+    elif name == MISTRAL_7B_NAME_SHORT:
+        name = MISTRAL_7B_NAME
+    elif name == MISTRAL_NEMO_NAME_SHORT:
         name = MISTRAL_NEMO_12B_NAME
 
     # I usually save randomly initialized variants under the short name of the
@@ -370,7 +374,9 @@ def load_model(
         name in {LLAMA_13B_NAME, LLAMA_30B_NAME} or LLAMA_NAME_SHORT in name
     )
     is_mistral_variant = (
-        name == MISTRAL_NEMO_12B_NAME or MISTRAL_NAME_SHORT in name
+        name in {MISTRAL_7B_NAME, MISTRAL_NEMO_12B_NAME}
+        or MISTRAL_7B_NAME_SHORT in name
+        or MISTRAL_NEMO_NAME_SHORT in name
     )
 
     if fp16 is None:
