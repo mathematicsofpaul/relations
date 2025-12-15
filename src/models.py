@@ -34,7 +34,7 @@ MISTRAL_NEMO_12B_NAME = "mistralai/Mistral-Nemo-Instruct-2407"
 MISTRAL_7B_NAME_SHORT = "mistral"
 MISTRAL_NEMO_NAME_SHORT = "nemo"
 
-DOWNLOADABLE_MODELS = frozenset({GPT_J_NAME, GPT_NEO_X_NAME, "gpt2-xl"})
+DOWNLOADABLE_MODELS = frozenset({GPT_J_NAME, GPT_NEO_X_NAME, "gpt2-xl", MISTRAL_7B_NAME, MISTRAL_NEMO_12B_NAME})
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,11 @@ class ModelAndTokenizer:
             # TODO(evan): Does not factor in different sizes.
             return LLAMA_NAME_SHORT
         elif isinstance(self.model, transformers.MistralForCausalLM):
-            return MISTRAL_NAME_SHORT
+            # Determine which Mistral variant based on config
+            if hasattr(self.model.config, 'num_hidden_layers'):
+                if self.model.config.num_hidden_layers == 40:
+                    return MISTRAL_NEMO_NAME_SHORT
+            return MISTRAL_7B_NAME_SHORT
         elif isinstance(self.model, transformers.GPTJForCausalLM):
             return GPT_J_NAME_SHORT
         elif isinstance(self.model, transformers.GPT2LMHeadModel):
@@ -412,7 +416,7 @@ def load_model(
         tokenizer.pad_token = tokenizer.eos_token = "</s>"
         tokenizer.pad_token_id = tokenizer.eos_token_id = 2
     elif is_mistral_variant:
-        tokenizer = transformers.AutoTokenizer.from_pretrained(name)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(name, fix_mistral_regex=True)
         tokenizer.pad_token = tokenizer.eos_token
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(name)
